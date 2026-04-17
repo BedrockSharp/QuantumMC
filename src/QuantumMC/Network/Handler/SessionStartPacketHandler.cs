@@ -52,7 +52,7 @@ namespace QuantumMC.Network.Handler
                 ThrottlingScalar = 0f
             };
 
-            session.SendPacket(response, false);
+            session.SendPacket(response);
             session.CompressionReady = true;
             session.State = SessionState.LoginPhase;
             Log.Information("Sent NetworkSettings to {EndPoint}", session.EndPoint);
@@ -84,7 +84,7 @@ namespace QuantumMC.Network.Handler
                         BaseGameVersion = "*",
                         UseVanillaEditorPacks = false
                     };
-                    session.SendPacket(stackPacket, false);
+                    session.SendPacket(stackPacket);
                     Log.Information("Sent ResourcePackStack to {Username}", session.Username);
                     break;
 
