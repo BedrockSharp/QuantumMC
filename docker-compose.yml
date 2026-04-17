@@ -1,0 +1,11 @@
+services:
+  quantummc:
+    build: .
+    container_name: quantummc
+    ports:
+      - "19132:19132/udp"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    stdin_open: true
+    tty: true

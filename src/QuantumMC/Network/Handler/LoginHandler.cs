@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
 using BedrockProtocol.Packets;
@@ -9,14 +7,14 @@ using Serilog;
 
 namespace QuantumMC.Network.Handler
 {
-    public class LoginPacketHandler : PacketHandler
+    public class LoginHandler : PacketHandler
     {
         public override void Handle(PlayerSession session, uint packetId, byte[] payload)
         {
             var stream = new BinaryStream(payload);
             var packet = new LoginPacket();
             
-            _ = stream.ReadBytes(4); // MUST use ReadBytes, Position += 4 breaks internal wrapper cache
+            _ = stream.ReadBytes(4); 
             
             uint reqLen = stream.ReadUnsignedVarInt();
             byte[] requestBytes = stream.ReadBytes((int)reqLen);
@@ -73,14 +71,10 @@ namespace QuantumMC.Network.Handler
                         var payloadDoc = JsonDocument.Parse(Convert.FromBase64String(payloadBase64));
                         
                         if (payloadDoc.RootElement.TryGetProperty("xname", out var xnameProp))
-                        {
                             username = xnameProp.GetString() ?? "Unknown";
-                        }
                         
                         if (payloadDoc.RootElement.TryGetProperty("cpk", out var cpkProp))
-                        {
                             clientPubKeyBase64 = cpkProp.GetString() ?? "";
-                        }
                         
                         Log.Information("Parsed OpenID login for {Username}", username);
                     }
@@ -117,23 +111,15 @@ namespace QuantumMC.Network.Handler
                 }
                 
                 byte[] clientPubKeyBytes = Convert.FromBase64String(clientPubKeyBase64);
-                
                 using var clientKey = ECDiffieHellman.Create();
                 clientKey.ImportSubjectPublicKeyInfo(clientPubKeyBytes, out _);
 
                 byte[] sharedSecret = serverEcdh.DeriveRawSecretAgreement(clientKey.PublicKey);
-                
-                Log.Debug("Derived shared secret of {Len} bytes: {Hex}", sharedSecret.Length, BitConverter.ToString(sharedSecret).Replace("-", "").Substring(0, 8) + "...");
-
                 byte[] serverSalt = new byte[16];
                 RandomNumberGenerator.Fill(serverSalt);
 
                 var (aesKey, ivBase) = EncryptionUtils.DeriveKeys(sharedSecret, serverSalt);
                 
-                Log.Information("Encryption Key Derived. Salt: {SaltHex}, Key Fingerprint: {KeyFp}", 
-                    BitConverter.ToString(serverSalt).Replace("-", "").Substring(0, 8),
-                    BitConverter.ToString(aesKey).Replace("-", "").Substring(0, 8));
-
                 string headerJson = $"{{\"alg\":\"ES384\",\"x5u\":\"{serverPublicKeyBase64}\"}}";
                 string payloadJson = $"{{\"salt\":\"{Convert.ToBase64String(serverSalt)}\"}}";
 
@@ -141,49 +127,26 @@ namespace QuantumMC.Network.Handler
                 string payloadB64 = EncryptionUtils.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(payloadJson));
                 
                 string unsignedToken = $"{headerB64}.{payloadB64}";
-                
                 using var ecdsa = ECDsa.Create(serverEcdh.ExportParameters(true));
                 byte[] signature = ecdsa.SignData(System.Text.Encoding.UTF8.GetBytes(unsignedToken), HashAlgorithmName.SHA384);
                 string signatureB64 = EncryptionUtils.Base64UrlEncode(signature);
 
-                string jwtToken = $"{unsignedToken}.{signatureB64}";
-
                 var handshakePacket = new ServerToClientHandshakePacket
                 {
-                    JwtToken = jwtToken
+                    JwtToken = $"{unsignedToken}.{signatureB64}"
                 };
                 
                 session.SendPacket(handshakePacket);
-
                 session.InitializeEncryption(aesKey, ivBase);
                 
                 Log.Information("Sent ServerToClientHandshakePacket and enabled encryption for {Username}", session.Username);
+                
+                session.State = SessionState.LoginPhase; 
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to initialize encryption for {Username}", session.Username);
-                return;
             }
-
-            var playStatus = new PlayStatusPacket
-            {
-                Status = PlayStatus.LoginSuccess
-            };
-            session.SendPacket(playStatus);
-
-            var resourcePacksInfo = new ResourcePacksInfoPacket
-            {
-                MustAccept = false,
-                HasAddons = false,
-                HasScripts = false,
-                ForceDisableVibrantVisuals = false,
-                WorldTemplateId = Guid.Empty,
-                WorldTemplateVersion = string.Empty
-            };
-            session.SendPacket(resourcePacksInfo);
-
-            session.State = SessionState.ResourcePackPhase;
-            Log.Information("Sent PlayStatus(LoginSuccess) + ResourcePacksInfo to {Username}", session.Username);
         }
 
         private string ExtractUsernameFromChain(string chainDataJwt)
@@ -219,10 +182,7 @@ namespace QuantumMC.Network.Handler
                 }
                 return "Unknown";
             }
-            catch
-            {
-                return "Unknown";
-            }
+            catch { return "Unknown"; }
         }
 
         private string ExtractClientPublicKey(string chainDataJwt)
@@ -268,27 +228,17 @@ namespace QuantumMC.Network.Handler
                             byte[] payloadBytes = Convert.FromBase64String(payloadBase64);
                             var payloadDoc = JsonDocument.Parse(payloadBytes);
                             if (payloadDoc.RootElement.TryGetProperty("identityPublicKey", out var pubKey))
-                            {
-                                string val = pubKey.GetString();
-                                if (!string.IsNullOrEmpty(val)) return val;
-                            }
+                                return pubKey.GetString() ?? "";
                             
                             if (payloadDoc.RootElement.TryGetProperty("extraData", out var extraData) &&
                                 extraData.TryGetProperty("identityPublicKey", out pubKey))
-                            {
-                                string val = pubKey.GetString();
-                                if (!string.IsNullOrEmpty(val)) return val;
-                            }
+                                return pubKey.GetString() ?? "";
                         }
                         catch {}
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Log.Warning("Failed to extract client public key from ChainData: {Message}", ex.Message);
-            }
-            
+            catch (Exception ex) { Log.Warning("Failed to extract client public key: {Message}", ex.Message); }
             return string.Empty;
         }
 
@@ -297,9 +247,7 @@ namespace QuantumMC.Network.Handler
             int start = json.IndexOf('{');
             int end = json.LastIndexOf('}');
             if (start != -1 && end != -1 && end >= start)
-            {
                 return json.Substring(start, end - start + 1);
-            }
             return json;
         }
     }
