@@ -1,6 +1,7 @@
 using System.Net;
 using BedrockProtocol;
 using QuantumMC.Network;
+using QuantumMC.Config;
 using RaknetCS.Network;
 using Serilog;
 
@@ -13,17 +14,23 @@ namespace QuantumMC
         private readonly int _maxPlayers;
         private bool _running;
 
-        public Server(int port = 19132, int maxPlayers = 20)
+        public Server()
         {
-            _port = port;
-            _maxPlayers = maxPlayers;
+            var config = ConfigManager.Load();
+
+            _port = config.Port;
+            _maxPlayers = config.MaxPlayers;
+
             _network = new Network.Network(_port, _maxPlayers);
+
+            _network.Advertisement.Motd = config.Motd;
+            _network.Advertisement.SubMotd = config.SubMotd;
+            _network.Advertisement.GameMode = config.GameMode;
         }
 
         public void Start()
         {
             _running = true;
-
             Log.Information("  ____                    _                   __  __  ____ ");
             Log.Information(" / __ \\                  | |                 |  \\/  |/ ___|");
             Log.Information("| |  | |_   _  __ _ _ __ | |_ _   _ _ __ ___ | |\\/| | |    ");
@@ -36,13 +43,11 @@ namespace QuantumMC
             Log.Information("Listening on port {Port} (Max players: {MaxPlayers})", _port, _maxPlayers);
             Log.Information("QuantumMC is in ALPHA there are bugs so please report them.");
             Log.Information("");
-            
+
             Registry.BlockRegistry.Init();
-
             _network.Start();
-
             Log.Information("Server started! Waiting for connections...");
-            Log.Information("Connection Open on {Port}");
+            Log.Information("Connection Open on {Port}", _port); // also fixed missing arg here
 
             Console.CancelKeyPress += (_, e) =>
             {
@@ -60,12 +65,9 @@ namespace QuantumMC
         {
             if (!_running) return;
             _running = false;
-
             Log.Information("Stopping server...");
             Log.Information("Server Stopped Successfully!");
-
             _network.Stop();
-
             Log.Information("Server stopped.");
         }
     }
