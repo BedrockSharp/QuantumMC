@@ -7,7 +7,7 @@ namespace QuantumMC
         public static void Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
+                .MinimumLevel.Information()
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("ThreadName", "Main Thread")
                 .WriteTo.Console(

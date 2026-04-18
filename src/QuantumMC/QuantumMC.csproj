@@ -6,10 +6,9 @@
     <RootNamespace>QuantumMC</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.0.0</Version>
 
     <PackageId>QuantumMC</PackageId>
-    <Version>1.0.0</Version>
+    <Version>0.0.1-alpha1</Version>
     <Authors>BedrockSharp</Authors>
     <Company>BedrockSharp</Company>
     <Description>Highly customized, lightweight and super-fast Minecraft: Bedrock Edition server software written in modern C#.</Description>
