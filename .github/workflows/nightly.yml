@@ -24,6 +24,8 @@ jobs:
     - name: Delete old release and tag
       run: |
         gh release delete nightly --cleanup-tag -y || true
+        git tag -d nightly || true
+        git push origin :refs/tags/nightly || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
