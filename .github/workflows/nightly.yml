@@ -12,38 +12,28 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
-        
+
     - name: Build
       run: dotnet build src/QuantumMC/QuantumMC.csproj --configuration Release
-      
-    - name: Delete old release and tag
+
+    - name: Delete old nightly release and tag
       run: |
         gh release delete nightly --cleanup-tag -y || true
-        git tag -d nightly || true
         git push origin :refs/tags/nightly || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Create nightly tag
+    - name: Create nightly release
       run: |
-        git tag nightly
-        git push origin nightly
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Release Nightly
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: nightly
-        name: Nightly Build
-        prerelease: true
-        draft: false
-        make_latest: false
-        files: src/QuantumMC/bin/Release/net9.0/QuantumMC.dll
+        gh release create nightly \
+          --title "Nightly Build" \
+          --prerelease \
+          --latest=false \
+          src/QuantumMC/bin/Release/net9.0/QuantumMC.dll
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
