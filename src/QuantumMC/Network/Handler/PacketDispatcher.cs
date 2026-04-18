@@ -15,11 +15,14 @@ namespace QuantumMC.Network.Handler
             var handshakeHandler = new HandshakeHandler();
             var resourcePackHandler = new ResourcePackHandler();
             var sessionHandler = new SessionStartPacketHandler();
+            var playHandler = new PlayHandler();
 
             _handlers.Add((uint)PacketIds.Login, loginHandler);
             _handlers.Add((uint)PacketIds.ClientToServerHandshake, handshakeHandler);
             _handlers.Add((uint)PacketIds.ResourcePackClientResponse, resourcePackHandler);
             _handlers.Add((uint)PacketIds.RequestNetworkSettings, sessionHandler);
+            _handlers.Add((uint)PacketIds.RequestChunkRadius, playHandler);
+            _handlers.Add((uint)PacketIds.SetLocalPlayerAsInitialized, playHandler);
         }
 
         public static void Dispatch(PlayerSession session, uint packetId, byte[] payload)

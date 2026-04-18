@@ -143,14 +143,9 @@ namespace QuantumMC.Network.Handler
                 HasServerJoinInformation = false,
                 ServerJoinInfo = null
             };
-            session.SendPacket(startGame);
 
-            var spawnStatus = new PlayStatusPacket
-            {
-                Status = PlayStatus.PlayerSpawn
-            };
-            session.SendPacket(spawnStatus);
-            Log.Information("Sent StartGame + PlayStatus(PlayerSpawn) to {Username}", session.Username);
+            session.SendPacket(startGame);
+            Log.Information("Sent StartGame to {Username}", session.Username);
         }
     }
 }

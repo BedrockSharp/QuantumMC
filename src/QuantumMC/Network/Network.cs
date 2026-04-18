@@ -2,6 +2,7 @@ using System.Net;
 using BedrockProtocol;
 using RaknetCS.Network;
 using Serilog;
+using QuantumMC.World;
 
 namespace QuantumMC.Network
 {
@@ -14,12 +15,14 @@ namespace QuantumMC.Network
         public MotdAdvertisement Advertisement { get; }
 
         public SessionManager SessionManager => _sessionManager;
+        public World.World World { get; }
 
         public Network(int port, int maxPlayers)
         {
             _port = port;
             _maxPlayers = maxPlayers;
             _sessionManager = new SessionManager();
+            World = new World.World(new FlatWorldGenerator());
             Advertisement = new MotdAdvertisement
             {
                 Motd = "QuantumMC Server",
@@ -52,7 +55,10 @@ namespace QuantumMC.Network
         {
             Log.Information("New RakNet session from {EndPoint}", rakSession.PeerEndPoint);
 
-            var playerSession = new PlayerSession(rakSession, _sessionManager);
+            var playerSession = new PlayerSession(rakSession, _sessionManager)
+            {
+                World = this.World
+            };
             _sessionManager.AddSession(rakSession.PeerEndPoint, playerSession);
 
             UpdateMotd();

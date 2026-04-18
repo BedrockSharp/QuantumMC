@@ -5,6 +5,7 @@ using RaknetCS.Protocol.Raknet;
 using Serilog;
 using Org.BouncyCastle.Crypto;
 using QuantumMC.Network.Handler;
+using QuantumMC.World;
 
 namespace QuantumMC.Network
 {
@@ -24,6 +25,9 @@ namespace QuantumMC.Network
         
         public BedrockStreamCipher? Encryptor { get; private set; }
         public BedrockStreamCipher? Decryptor { get; private set; }
+
+        public World.World? World { get; set; }
+        public int ChunkRadius { get; set; } = 8;
 
         private readonly SessionManager _sessionManager;
 

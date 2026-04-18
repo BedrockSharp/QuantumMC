@@ -17,6 +17,7 @@ namespace QuantumMC
             try
             {
                 Log.Information("Starting QuantumMC v{Version}...", Utils.Version.Current);
+                
                 var server = new Server();
                 server.Start();
             }

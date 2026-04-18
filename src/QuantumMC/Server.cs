@@ -35,6 +35,8 @@ namespace QuantumMC
             Log.Information("Protocol: {Protocol} | Version: {Version}", Protocol.CurrentProtocol, Protocol.MinecraftVersion);
             Log.Information("Listening on port {Port} (Max players: {MaxPlayers})", _port, _maxPlayers);
             Log.Information("");
+            
+            Registry.BlockRegistry.Init();
 
             _network.Start();
 
