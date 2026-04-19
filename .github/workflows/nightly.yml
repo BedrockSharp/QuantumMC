@@ -25,7 +25,7 @@ jobs:
       run: |
         ASSET=src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
 
-        RELEASE_ID=$(gh api "repos/$GH_REPO/releases/tags/nightly" --jq '.id' 2>/dev/null | tr -d '[:space:]' || true)
+        RELEASE_ID=$(gh api "repos/$GH_REPO/releases/tags/nightly" 2>/dev/null | jq -r 'if .id then .id | tostring else "" end' | tr -d '[:space:]')
 
         if [ -n "$RELEASE_ID" ]; then
           gh api -X PATCH "repos/$GH_REPO/releases/$RELEASE_ID" \
