@@ -24,6 +24,7 @@ jobs:
         GH_REPO: ${{ github.repository }}
       run: |
         ASSET=src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
+        ASSET_NAME=$(basename "$ASSET")
 
         RELEASE_ID=$(gh api "repos/$GH_REPO/releases/tags/nightly" 2>/dev/null | jq -r 'if .id then .id | tostring else "" end' | tr -d '[:space:]')
 
@@ -33,7 +34,11 @@ jobs:
               gh api -X DELETE "repos/$GH_REPO/releases/assets/$asset_id"
             done
 
-          gh release upload nightly "$ASSET" --clobber
+          curl -s -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@$ASSET" \
+            "https://uploads.github.com/repos/$GH_REPO/releases/$RELEASE_ID/assets?name=$ASSET_NAME"
         else
           gh release create nightly \
             --title "Nightly Build" \
