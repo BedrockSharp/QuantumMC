@@ -26,7 +26,7 @@ jobs:
         ASSET=src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
         ASSET_NAME=$(basename "$ASSET")
 
-        RELEASE_ID=$(gh api "repos/$GH_REPO/releases/tags/nightly" 2>/dev/null | jq -r 'if .id then .id | tostring else "" end' | tr -d '[:space:]')
+        RELEASE_ID=$(gh api "repos/$GH_REPO/releases/tags/nightly_build" 2>/dev/null | jq -r 'if .id then .id | tostring else "" end' | tr -d '[:space:]')
 
         if [ -n "$RELEASE_ID" ]; then
           gh api "repos/$GH_REPO/releases/$RELEASE_ID/assets" --jq '.[].id' | \
@@ -40,7 +40,7 @@ jobs:
             --data-binary "@$ASSET" \
             "https://uploads.github.com/repos/$GH_REPO/releases/$RELEASE_ID/assets?name=$ASSET_NAME"
         else
-          gh release create nightly \
+          gh release create nightly_build \
             --title "Nightly Build" \
             --prerelease \
             --latest=false \
