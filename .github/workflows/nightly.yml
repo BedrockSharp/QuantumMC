@@ -1,12 +1,15 @@
 name: Nightly Build
+
 on:
   push:
-    branches: [ master, nightly ]
+    branches: [ master ]
+
 jobs:
   nightly:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
     - uses: actions/checkout@v4
 
@@ -18,31 +21,19 @@ jobs:
     - name: Build
       run: dotnet build src/QuantumMC/QuantumMC.csproj --configuration Release
 
-    - name: Update nightly release
+    - name: Delete old nightly release and tag
+      run: |
+        gh release delete nightly_build --cleanup-tag -y || true
+        git push origin :refs/tags/nightly_build || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GH_REPO: ${{ github.repository }}
+
+    - name: Create nightly release
       run: |
-        ASSET=src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
-        ASSET_NAME=$(basename "$ASSET")
-
-        RELEASE_ID=$(gh api "repos/$GH_REPO/releases/tags/nightly_build" 2>/dev/null | jq -r 'if .id then .id | tostring else "" end' | tr -d '[:space:]')
-
-        if [ -n "$RELEASE_ID" ]; then
-          gh api "repos/$GH_REPO/releases/$RELEASE_ID/assets" --jq '.[].id' | \
-            while read -r asset_id; do
-              gh api -X DELETE "repos/$GH_REPO/releases/assets/$asset_id"
-            done
-
-          curl -s -X POST \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary "@$ASSET" \
-            "https://uploads.github.com/repos/$GH_REPO/releases/$RELEASE_ID/assets?name=$ASSET_NAME"
-        else
-          gh release create nightly_build \
-            --title "Nightly Build" \
-            --prerelease \
-            --latest=false \
-            "$ASSET"
-        fi
+        gh release create nightly_build \
+          --title "Nightly Build" \
+          --prerelease \
+          --latest=false \
+          src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
