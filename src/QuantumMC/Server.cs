@@ -65,7 +65,7 @@ namespace QuantumMC
             if (!_running) return;
             _running = false;
             Log.Information("Stopping server...");
-            Log.Information("Server has Stopped Successfully!");
+            Log.Information("Server has stopped successfully!");
             _network.Stop();
             Log.Information("Server has stopped.");
         }
