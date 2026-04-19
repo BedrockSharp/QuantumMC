@@ -1,7 +1,7 @@
 name: Nightly Build
 on:
   push:
-    branches: [ master ]
+    branches: [ master, nightly ]
 jobs:
   nightly:
     runs-on: ubuntu-latest
@@ -25,18 +25,18 @@ jobs:
       run: |
         ASSET=src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
 
-        RELEASE_ID=$(gh api repos/$GH_REPO/releases/tags/nightly --jq '.id' 2>/dev/null || true)
+        RELEASE_ID=$(gh api "repos/$GH_REPO/releases/tags/nightly" --jq '.id' 2>/dev/null | tr -d '[:space:]' || true)
 
         if [ -n "$RELEASE_ID" ]; then
-          gh api -X PATCH repos/$GH_REPO/releases/$RELEASE_ID \
+          gh api -X PATCH "repos/$GH_REPO/releases/$RELEASE_ID" \
             -f tag_name=nightly \
             -f name="Nightly Build" \
             -F prerelease=true \
             -f make_latest=false
 
-          gh api repos/$GH_REPO/releases/$RELEASE_ID/assets --jq '.[].id' | \
+          gh api "repos/$GH_REPO/releases/$RELEASE_ID/assets" --jq '.[].id' | \
             while read -r asset_id; do
-              gh api -X DELETE repos/$GH_REPO/releases/assets/$asset_id
+              gh api -X DELETE "repos/$GH_REPO/releases/assets/$asset_id"
             done
 
           gh release upload nightly "$ASSET" --clobber
