@@ -1,15 +1,12 @@
 name: Nightly Build
-
 on:
   push:
     branches: [ master ]
-
 jobs:
   nightly:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
     - uses: actions/checkout@v4
 
@@ -21,19 +18,30 @@ jobs:
     - name: Build
       run: dotnet build src/QuantumMC/QuantumMC.csproj --configuration Release
 
-    - name: Delete old nightly release and tag
-      run: |
-        gh release delete nightly --cleanup-tag -y || true
-        git push origin :refs/tags/nightly || true
+    - name: Update nightly release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        ASSET=src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
 
-    - name: Create nightly release
-      run: |
-        gh release create nightly \
-          --title "Nightly Build" \
-          --prerelease \
-          --latest=false \
-          src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_ID=$(gh api repos/$GH_REPO/releases/tags/nightly --jq '.id' 2>/dev/null || true)
+
+        if [ -n "$RELEASE_ID" ]; then
+          gh api -X PATCH repos/$GH_REPO/releases/$RELEASE_ID \
+            -f tag_name=nightly \
+            -f name="Nightly Build" \
+            -F prerelease=true \
+            -F make_latest=false
+
+          gh api repos/$GH_REPO/releases/$RELEASE_ID/assets --jq '.[].id' | \
+            xargs -I{} gh api -X DELETE repos/$GH_REPO/releases/assets/{}
+
+          gh release upload nightly "$ASSET" --clobber
+        else
+          gh release create nightly \
+            --title "Nightly Build" \
+            --prerelease \
+            --latest=false \
+            "$ASSET"
+        fi
