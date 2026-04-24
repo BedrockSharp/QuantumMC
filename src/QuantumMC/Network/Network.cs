@@ -16,19 +16,19 @@ namespace QuantumMC.Network
         public MotdAdvertisement Advertisement { get; }
 
         public SessionManager SessionManager => _sessionManager;
-        public World.World World { get; }
+        public World.World World => WorldManager.Instance.GetWorld(Server.Instance.Config.WorldName)!;
 
         public Network(ServerConfig config)
         {
             _port = config.Port;
             _maxPlayers = config.MaxPlayers;
             _sessionManager = new SessionManager();
-            World = new World.World(new FlatWorldGenerator());
+
             Advertisement = new MotdAdvertisement
             {
                 Motd = config.Motd,
                 SubMotd = config.SubMotd,
-                Protocol = BedrockProtocol.Protocol.CurrentProtocol.ToString(),
+                Protocol = BedrockProtocol.Protocol.CurrentProtocol,
                 Version = BedrockProtocol.Protocol.MinecraftVersion,
                 MaxPlayers = _maxPlayers,
                 Port = _port
@@ -76,7 +76,7 @@ namespace QuantumMC.Network
     {
         public string Motd { get; set; } = "A QuantumMC Server";
         public string SubMotd { get; set; } = "QuantumMC";
-        public string Protocol { get; set; } = "944";
+        public int Protocol { get; set; } = 944;
         public string Version { get; set; } = "1.26.10";
         public int OnlineCount { get; set; } = 0;
         public int MaxPlayers { get; set; } = 20;

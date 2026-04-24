@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using QuantumMC.Blocks;
+using Serilog;
 
 namespace QuantumMC.Registry
 {
@@ -20,7 +21,7 @@ namespace QuantumMC.Registry
             stream.CopyTo(ms);
             byte[] buf = ms.ToArray();
             
-            byte[] pattern = new byte[] { 0x08, 0x04, (byte)'n', (byte)'a', (byte)'m', (byte)'e' };
+            byte[] pattern = new byte[] { 0x08, 0x04, (byte)'n', (byte)'a', (byte)'m', (byte)'e' }; // TODO: This sucks, we should use our Nbt library for this
             
             int idx = 0;
             while ((idx = IndexOf(buf, pattern, idx)) != -1)
@@ -41,15 +42,11 @@ namespace QuantumMC.Registry
                 {
                     string name = System.Text.Encoding.UTF8.GetString(buf, idx, nameLen);
                     blocks.Add(name);
+                    idx += nameLen;
                 }
             }
 
-            int GetId(string name)
-            {
-                int index = blocks.IndexOf(name);
-                if (index == -1) throw new Exception("Block not found in canonical NBT: " + name);
-                return index;
-            }
+            Log.Debug("Loaded {Count} block states.", blocks.Count);
 
             _byRuntimeId.Clear();
             _byIdentifier.Clear();
@@ -60,7 +57,12 @@ namespace QuantumMC.Registry
                 if (type.IsSubclassOf(typeof(Block)) && !type.IsAbstract)
                 {
                     var block = (Block)Activator.CreateInstance(type)!;
-                    int runtimeId = GetId(block.Identifier);
+                    int runtimeId = blocks.IndexOf(block.Identifier);
+                    
+                    if (runtimeId == -1) {
+                        Log.Warning("Block identifier {Identifier} not found in canonical states!", block.Identifier);
+                        continue;
+                    }
 
                     var idProp = type.GetProperty("ID", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
                     if (idProp != null)
@@ -72,6 +74,7 @@ namespace QuantumMC.Registry
                 }
             }
         }
+
 
         private static int IndexOf(byte[] source, byte[] pattern, int start)
         {

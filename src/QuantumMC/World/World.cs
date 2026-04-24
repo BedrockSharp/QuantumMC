@@ -3,18 +3,18 @@ using Serilog;
 
 namespace QuantumMC.World
 {
-    /// <summary>
-    /// Manages the world state, including chunk generation and caching.
-    /// </summary>
-    public class World
+    public class World : IDisposable
     {
         private readonly ConcurrentDictionary<(int X, int Z), Chunk> _chunks = new();
         private readonly IWorldGenerator _generator;
+        private readonly IWorldProvider? _provider;
 
         /// <summary>
         /// The maximum chunk radius the server will allow.
         /// </summary>
         public int MaxChunkRadius { get; set; } = 8;
+        
+        public string Name { get; set; } = "world";
 
         /// <summary>
         /// The world spawn position.
@@ -23,9 +23,18 @@ namespace QuantumMC.World
         public int SpawnY { get; set; } = 65;
         public int SpawnZ { get; set; } = 0;
 
-        public World(IWorldGenerator generator)
+        public World(IWorldGenerator generator, IWorldProvider? provider = null)
         {
             _generator = generator;
+            _provider = provider;
+
+            if (_provider != null)
+            {
+                Name = _provider.LevelName;
+                SpawnX = _provider.SpawnX;
+                SpawnY = _provider.SpawnY;
+                SpawnZ = _provider.SpawnZ;
+            }
         }
 
         /// <summary>
@@ -36,8 +45,16 @@ namespace QuantumMC.World
         {
             return _chunks.GetOrAdd((chunkX, chunkZ), key =>
             {
-                var chunk = new Chunk(key.X, key.Z);
+                var chunk = _provider?.LoadChunk(key.X, key.Z);
+                if (chunk != null)
+                {
+                    return chunk;
+                }
+
+                chunk = new Chunk(key.X, key.Z);
                 _generator.Generate(chunk);
+
+                _provider?.SaveChunk(chunk);
                 return chunk;
             });
         }
@@ -67,5 +84,16 @@ namespace QuantumMC.World
         /// Gets the number of currently loaded chunks.
         /// </summary>
         public int LoadedChunkCount => _chunks.Count;
+
+        /// <summary>
+        /// Disposes the world and its provider.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_provider is IDisposable disposableProvider)
+            {
+                disposableProvider.Dispose();
+            }
+        }
     }
 }

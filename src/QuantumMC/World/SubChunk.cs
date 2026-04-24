@@ -2,10 +2,6 @@ using BedrockProtocol.Types;
 
 namespace QuantumMC.World
 {
-    /// <summary>
-    /// Server-side representation of a 16x16x16 sub-chunk.
-    /// Wraps PalettedBlockStorage for convenient block manipulation.
-    /// </summary>
     public class SubChunk
     {
         private readonly PalettedBlockStorage _storage;
