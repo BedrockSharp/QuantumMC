@@ -16,7 +16,6 @@ namespace QuantumMC.Network
         public MotdAdvertisement Advertisement { get; }
 
         public SessionManager SessionManager => _sessionManager;
-        public World.World World => WorldManager.Instance.GetWorld(Server.Instance.Config.WorldName)!;
 
         public Network(ServerConfig config)
         {
@@ -58,7 +57,7 @@ namespace QuantumMC.Network
 
             var playerSession = new PlayerSession(rakSession, _sessionManager)
             {
-                World = this.World
+                World = WorldManager.Instance.DefaultWorld
             };
             _sessionManager.AddSession(rakSession.PeerEndPoint, playerSession);
 

@@ -1,8 +1,5 @@
 namespace QuantumMC.World
 {
-    /// <summary>
-    /// Interface for world generators that populate chunk data.
-    /// </summary>
     public interface IWorldGenerator
     {
         /// <summary>

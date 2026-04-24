@@ -1,8 +1,5 @@
 namespace QuantumMC.World
 {
-    /// <summary>
-    /// Interface for providing chunk data from a persistent storage.
-    /// </summary>
     public interface IWorldProvider
     {
         string LevelName { get; }
