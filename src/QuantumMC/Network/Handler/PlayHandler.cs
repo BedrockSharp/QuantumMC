@@ -18,11 +18,6 @@ namespace QuantumMC.Network.Handler
                 case PacketIds.SetLocalPlayerAsInitialized:
                     HandleSetLocalPlayerAsInitialized(session, payload);
                     break;
-
-                default:
-                    Log.Debug("PlayHandler received unhandled packet 0x{PacketId:X2} from {Username}",
-                        packetId, session.Username);
-                    break;
             }
         }
 
@@ -32,29 +27,27 @@ namespace QuantumMC.Network.Handler
             var packet = new RequestChunkRadiusPacket();
             packet.Decode(stream);
 
-            Log.Information("Player {Username} requested chunk radius: {Radius} (max: {MaxRadius})",
+            Log.Debug("Player {Username} requested chunk radius: {Radius} (max: {MaxRadius})",
                 session.Username, packet.Radius, packet.MaxRadius);
 
-            if (session.World == null)
+            if (session.Player.World == null)
             {
                 Log.Error("World is null for player {Username}, cannot send chunks", session.Username);
                 return;
             }
 
-            int grantedRadius = Math.Min(packet.Radius, session.World.MaxChunkRadius);
-            session.ChunkRadius = grantedRadius;
+            int grantedRadius = Math.Min(packet.Radius, session.Player.World.MaxChunkRadius);
+            session.Player.ChunkRadius = grantedRadius;
 
             var radiusResponse = new ChunkRadiusUpdatedPacket
             {
                 Radius = grantedRadius
             };
             session.SendPacket(radiusResponse);
-            Log.Information("Sent ChunkRadiusUpdated to {Username}: radius={Radius}",
-                session.Username, grantedRadius);
 
-            int spawnX = session.World.SpawnX;
-            int spawnY = session.World.SpawnY;
-            int spawnZ = session.World.SpawnZ;
+            int spawnX = session.Player.World.SpawnX;
+            int spawnY = session.Player.World.SpawnY;
+            int spawnZ = session.Player.World.SpawnZ;
 
             var publisherUpdate = new NetworkChunkPublisherUpdatePacket
             {
@@ -62,18 +55,17 @@ namespace QuantumMC.Network.Handler
                 Radius = grantedRadius * 16 
             };
             session.SendPacket(publisherUpdate);
-            Log.Information("Sent NetworkChunkPublisherUpdate to {Username}: pos=({X},{Y},{Z}), radius={Radius}",
-                session.Username, spawnX, spawnY, spawnZ, grantedRadius * 16);
 
             int centerChunkX = spawnX >> 4;
             int centerChunkZ = spawnZ >> 4;
 
-            var chunks = session.World.GetChunksInRadius(centerChunkX, centerChunkZ, grantedRadius);
-            Log.Information("Sending {Count} chunks to {Username}...", chunks.Count, session.Username);
+            var chunks = session.Player.World.GetChunksInRadius(centerChunkX, centerChunkZ, grantedRadius);
 
             foreach (var chunk in chunks)
             {
-                var (chunkPayload, subChunkCount) = chunk.Serialize();
+                var chunkData = chunk.Serialize();
+                byte[] chunkPayload = chunkData.Payload;
+                int subChunkCount = chunkData.SubChunkCount;
 
                 var levelChunkPacket = new LevelChunkPacket
                 {
@@ -89,14 +81,11 @@ namespace QuantumMC.Network.Handler
                 session.SendPacket(levelChunkPacket);
             }
 
-            Log.Information("Finished sending {Count} chunks to {Username}", chunks.Count, session.Username);
-
             var spawnStatus = new PlayStatusPacket
             {
                 Status = BedrockProtocol.Packets.Enums.PlayStatus.PlayerSpawn
             };
             session.SendPacket(spawnStatus);
-            Log.Information("Sent PlayStatus(PlayerSpawn) to {Username}", session.Username);
         }
 
         private void HandleSetLocalPlayerAsInitialized(PlayerSession session, byte[] payload)
@@ -104,9 +93,6 @@ namespace QuantumMC.Network.Handler
             var stream = new BinaryStream(payload);
             var packet = new SetLocalPlayerAsInitializedPacket();
             packet.Decode(stream);
-
-            Log.Information("Player {Username} is fully initialized (runtimeEntityId={RuntimeEntityId})",
-                session.Username, packet.RuntimeEntityId);
 
             session.State = SessionState.PlayPhase;
         }

@@ -53,12 +53,7 @@ namespace QuantumMC.Network
 
         private void OnSessionConnected(RaknetSession rakSession)
         {
-            Log.Information("New RakNet session from {EndPoint}", rakSession.PeerEndPoint);
-
-            var playerSession = new PlayerSession(rakSession, _sessionManager)
-            {
-                World = Server.Instance.WorldManager.DefaultWorld
-            };
+            var playerSession = new PlayerSession(rakSession, _sessionManager);
             _sessionManager.AddSession(rakSession.PeerEndPoint, playerSession);
 
             UpdateMotd();

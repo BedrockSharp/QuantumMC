@@ -57,11 +57,22 @@ namespace QuantumMC.Network
 
         public static string Base64UrlEncode(byte[] input)
         {
-            string output = Convert.ToBase64String(input);
-            output = output.Split('=')[0];
-            output = output.Replace('+', '-');
-            output = output.Replace('/', '_');
-            return output;
+            return Convert.ToBase64String(input)
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+        }
+
+        public static byte[] Base64UrlDecode(string input)
+        {
+            return Convert.FromBase64String(PadBase64(input.Replace('-', '+').Replace('_', '/')));
+        }
+
+        public static string PadBase64(string input)
+        {
+            int padding = 4 - (input.Length % 4);
+            if (padding < 4) input += new string('=', padding);
+            return input;
         }
     }
 

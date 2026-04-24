@@ -29,11 +29,13 @@ namespace QuantumMC.Network.Handler
 
             int clientProtocol = System.Net.IPAddress.NetworkToHostOrder(packet.ProtocolVersion);
 
-            Log.Information("Received RequestNetworkSettings from {EndPoint} (Protocol: {Protocol})", session.EndPoint, clientProtocol);
-
             if (clientProtocol != Protocol.CurrentProtocol)
             {
-                Log.Warning("Protocol mismatch from {EndPoint}: client={ClientProtocol}, server={ServerProtocol}", session.EndPoint, clientProtocol, Protocol.CurrentProtocol);
+                Log.Debug("Protocol mismatch from {EndPoint}: client={ClientProtocol}, server={ServerProtocol}", session.EndPoint, clientProtocol, Protocol.CurrentProtocol);
+                session.SendPacket(new PlayStatusPacket
+                {
+                    Status = PlayStatus.LoginFailedClient
+                });
                 session.Disconnect();
                 return;
             }
@@ -50,7 +52,6 @@ namespace QuantumMC.Network.Handler
             session.SendPacket(response);
             session.CompressionReady = true;
             session.State = SessionState.LoginPhase;
-            Log.Information("Sent NetworkSettings to {EndPoint}", session.EndPoint);
         }
     }
 }

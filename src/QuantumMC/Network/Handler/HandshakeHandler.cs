@@ -9,9 +9,7 @@ namespace QuantumMC.Network.Handler
     {
         public override void Handle(PlayerSession session, uint packetId, byte[] payload)
         {
-            Log.Information("Received ClientToServerHandshake from {Username}", session.Username);
-
-            session.World = Server.Instance.WorldManager.DefaultWorld;
+            session.Player.World = Server.Instance.WorldManager.DefaultWorld;
 
             var playStatus = new PlayStatusPacket
             {
@@ -31,7 +29,6 @@ namespace QuantumMC.Network.Handler
             session.SendPacket(resourcePacksInfo);
 
             session.State = SessionState.ResourcePackPhase;
-            Log.Information("Sent PlayStatus(LoginSuccess) + ResourcePacksInfo to {Username}", session.Username);
         }
     }
 }

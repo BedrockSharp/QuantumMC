@@ -7,6 +7,8 @@ namespace QuantumMC.Network
     public class SessionManager
     {
         private readonly ConcurrentDictionary<IPEndPoint, PlayerSession> _sessions = new();
+        private long _entityIdCounter = 1;
+        public long GetNextEntityId() => Interlocked.Increment(ref _entityIdCounter);
 
         public int OnlineCount => _sessions.Count;
 
@@ -20,7 +22,7 @@ namespace QuantumMC.Network
         {
             if (_sessions.TryRemove(endPoint, out _))
             {
-                Log.Information("Session removed for {EndPoint} (Online: {Count})", endPoint, OnlineCount);
+                Log.Debug("Session removed for {EndPoint} (Online: {Count})", endPoint, OnlineCount);
             }
         }
 

@@ -20,7 +20,7 @@ namespace QuantumMC.World
         /// The world spawn position.
         /// </summary>
         public int SpawnX { get; set; } = 0;
-        public int SpawnY { get; set; } = 65;
+        public int SpawnY { get; set; } = 66;
         public int SpawnZ { get; set; } = 0;
 
         public World(IWorldGenerator generator, IWorldProvider? provider = null)

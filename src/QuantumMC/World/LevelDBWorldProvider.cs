@@ -9,7 +9,7 @@ namespace QuantumMC.World
     {
         public string LevelName { get; private set; } = "world";
         public int SpawnX { get; private set; } = 0;
-        public int SpawnY { get; private set; } = 65;
+        public int SpawnY { get; private set; } = 66;
         public int SpawnZ { get; private set; } = 0;
 
         private readonly IDatabase _db;
@@ -82,17 +82,30 @@ namespace QuantumMC.World
                 }
 
                 var chunk = new Chunk(x, z);
+                bool foundData = false;
 
                 for (sbyte y = Chunk.SubChunkIndexOffset; y < Chunk.SubChunkIndexOffset + Chunk.SubChunkCount; y++)
                 {
-                    byte[] subChunkKey = GetKey(x, z, 44, unchecked((byte)y));
+                    byte[] subChunkKey = GetKey(x, z, 47, unchecked((byte)y));
                     var subChunkData = _db.Get(subChunkKey);
+                    
+                    if (subChunkData == null)
+                    {
+                        subChunkKey = GetKey(x, z, 44, unchecked((byte)y));
+                        subChunkData = _db.Get(subChunkKey);
+                    }
 
                     if (subChunkData != null && subChunkData.Length > 0)
                     {
+                        foundData = true;
                         // TODO: Implement full Mojang SubChunk Disk Paletted Block deserialization
+                        // For now we return null so the generator can at least provide some terrain
+                        Log.Warning("Chunk at {X},{Z} SubChunk {Y} has data ({Len} bytes) but deserialization is TODO. Falling back to generator.", x, z, y, subChunkData.Length);
+                        return null; 
                     }
                 }
+
+                if (!foundData) return null;
 
                 return chunk;
             }
@@ -118,7 +131,7 @@ namespace QuantumMC.World
         }
 
         /// <summary>
-        /// Generates a Bedrock LevelDB Chunk key
+        /// Generates a Bedrock LevelDB chunk key
         /// </summary>
         private static byte[] GetKey(int x, int z, byte tag, byte? subChunkY = null)
         {
