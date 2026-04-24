@@ -86,14 +86,8 @@ namespace QuantumMC.World
 
                 for (sbyte y = Chunk.SubChunkIndexOffset; y < Chunk.SubChunkIndexOffset + Chunk.SubChunkCount; y++)
                 {
-                    byte[] subChunkKey = GetKey(x, z, 47, unchecked((byte)y));
+                    byte[] subChunkKey = GetKey(x, z, 44, unchecked((byte)y));
                     var subChunkData = _db.Get(subChunkKey);
-                    
-                    if (subChunkData == null)
-                    {
-                        subChunkKey = GetKey(x, z, 44, unchecked((byte)y));
-                        subChunkData = _db.Get(subChunkKey);
-                    }
 
                     if (subChunkData != null && subChunkData.Length > 0)
                     {
