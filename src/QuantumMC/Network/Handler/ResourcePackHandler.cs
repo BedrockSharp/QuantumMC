@@ -77,7 +77,7 @@ namespace QuantumMC.Network.Handler
                 WorldGamemode = 1,
                 IsHardcore = false,
                 Difficulty = 0,
-                SpawnX = session.World.SpawnX, SpawnY = session.World.SpawnY, SpawnZ = session.World.SpawnZ,
+                SpawnX = session.World!.SpawnX, SpawnY = session.World.SpawnY, SpawnZ = session.World.SpawnZ,
                 HasAchievementsDisabled = true,
                 EditorWorldType = 0,
                 CreatedInEditor = false,

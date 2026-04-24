@@ -212,7 +212,7 @@ namespace QuantumMC.Network.Handler
                             var headerDoc = JsonDocument.Parse(headerBytes);
                             if (headerDoc.RootElement.TryGetProperty("x5u", out var x5u))
                             {
-                                string val = x5u.GetString();
+                                string? val = x5u.GetString();
                                 if (!string.IsNullOrEmpty(val)) return val;
                             }
                         }
