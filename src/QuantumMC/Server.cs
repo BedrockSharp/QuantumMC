@@ -16,6 +16,7 @@ namespace QuantumMC
         private readonly int _maxPlayers;
         private bool _running;
         public ServerConfig Config;
+        public World.WorldManager WorldManager;
 
         public Server(ServerConfig config)
         {
@@ -25,7 +26,7 @@ namespace QuantumMC
             _port = config.Port;
             _maxPlayers = config.MaxPlayers;
 
-            new World.WorldManager();
+            WorldManager = new World.WorldManager();
             _network = new Network.Network(config);
         }
 
@@ -45,7 +46,7 @@ namespace QuantumMC
             Log.Information("");
 
             Registry.BlockRegistry.Init();
-            World.WorldManager.Instance.LoadWorlds();
+            WorldManager.LoadWorlds();
             
             _network.Start();
             Log.Information("Server started! Waiting for connections...");
