@@ -11,12 +11,13 @@ namespace QuantumMC
     {
         public static Server Instance { get; private set; } = default!;
         
-        private readonly Network.Network _network;
         private readonly int _port;
         private readonly int _maxPlayers;
         private bool _running;
         public ServerConfig Config;
         public World.WorldManager WorldManager;
+        public Player.IPlayerProvider PlayerProvider;
+        public Network.Network Network;
 
         public Server(ServerConfig config)
         {
@@ -27,7 +28,8 @@ namespace QuantumMC
             _maxPlayers = config.MaxPlayers;
 
             WorldManager = new World.WorldManager();
-            _network = new Network.Network(config);
+            PlayerProvider = new Player.LevelDBPlayerProvider(Path.Combine(QuantumMC.DataFolder, "players"));
+            Network = new Network.Network(config);
         }
 
         public void Start()
@@ -43,13 +45,12 @@ namespace QuantumMC
             Log.Information("QuantumMC - Minecraft: Bedrock Edition Server");
             Log.Information("Protocol: {Protocol} | Version: {Version}", Protocol.CurrentProtocol, Protocol.MinecraftVersion);
             Log.Information("Listening on port {Port} (Max players: {MaxPlayers})", _port, _maxPlayers);
-            Log.Information("");
 
             Registry.BlockRegistry.Init();
             WorldManager.LoadWorlds();
             
-            _network.Start();
-            Log.Information("Server started! Waiting for connections...");
+            Network.Start();
+            Log.Information("Server started! Type /help for the list of available commands.");
 
             Console.CancelKeyPress += (_, e) =>
             {
@@ -68,8 +69,8 @@ namespace QuantumMC
             if (!_running) return;
             _running = false;
             Log.Information("Stopping server...");
-            Log.Information("Server has stopped successfully!");
-            _network.Stop();
+            Network.Stop();
+            if (PlayerProvider is IDisposable disposable) disposable.Dispose();
             Log.Information("Server has stopped.");
         }
     }

@@ -14,90 +14,27 @@ namespace QuantumMC.Network.Handler
             var stream = new BinaryStream(payload);
             var packet = new LoginPacket();
             
-            _ = stream.ReadBytes(4); 
-            
-            uint reqLen = stream.ReadUnsignedVarInt();
-            byte[] requestBytes = stream.ReadBytes((int)reqLen);
-            
-            string authInfoStr = "";
-            if (requestBytes.Length > 0)
-            {
-                if (requestBytes[0] == '{')
-                {
-                    authInfoStr = System.Text.Encoding.UTF8.GetString(requestBytes);
-                }
-                else if (requestBytes.Length > 4 && requestBytes[4] == '{')
-                {
-                    int strLen = BitConverter.ToInt32(requestBytes, 0);
-                    if (strLen > 0 && strLen <= requestBytes.Length - 4)
-                        authInfoStr = System.Text.Encoding.UTF8.GetString(requestBytes, 4, strLen);
-                }
-                else
-                {
-                    var innerStream = new BinaryStream(requestBytes);
-                    uint innerLen = innerStream.ReadUnsignedVarInt();
-                    if (innerLen > 0 && innerLen <= requestBytes.Length)
-                    {
-                        byte[] strBytes = innerStream.ReadBytes((int)innerLen);
-                        authInfoStr = System.Text.Encoding.UTF8.GetString(strBytes);
-                    }
-                }
-            }
+            string authInfoStr = System.Text.Encoding.UTF8.GetString(payload);
             
             stream.Position = 0;
             try { packet.Decode(stream); } catch {}
 
-            Log.Information("Received Login from {EndPoint} (Protocol: {Protocol})", session.EndPoint, packet.ProtocolVersion);
+            LoginChainData chainData = ParseChainData(authInfoStr);
+            session.Player.ChainData = chainData;
+            
+            session.Username = chainData.Username;
+            session.Player.Username = chainData.Username;
+            session.Player.Xuid = chainData.Xuid;
+            session.Player.Uuid = chainData.ClientUuid.ToString();
 
-            string clientPubKeyBase64 = string.Empty;
-            string username = "Unknown";
-            
-            try
+            string clientPubKeyBase64 = chainData.IdentityPublicKey;
+
+            if (Server.Instance.PlayerProvider.LoadPlayer(session.Player))
             {
-                authInfoStr = SanitizeJsonString(authInfoStr);
-                var authDoc = JsonDocument.Parse(authInfoStr);
-                
-                if (authDoc.RootElement.TryGetProperty("Token", out var tokenProp))
-                {
-                    string token = tokenProp.GetString() ?? "";
-                    var tokenParts = token.Split('.');
-                    if (tokenParts.Length == 3)
-                    {
-                        string payloadBase64 = tokenParts[1];
-                        int padding = 4 - (payloadBase64.Length % 4);
-                        if (padding < 4) payloadBase64 += new string('=', padding);
-                        payloadBase64 = payloadBase64.Replace('-', '+').Replace('_', '/');
-                        
-                        var payloadDoc = JsonDocument.Parse(Convert.FromBase64String(payloadBase64));
-                        
-                        if (payloadDoc.RootElement.TryGetProperty("xname", out var xnameProp))
-                            username = xnameProp.GetString() ?? "Unknown";
-                        
-                        if (payloadDoc.RootElement.TryGetProperty("cpk", out var cpkProp))
-                            clientPubKeyBase64 = cpkProp.GetString() ?? "";
-                        
-                        Log.Information("Parsed OpenID login for {Username}", username);
-                    }
-                }
-                else if (authDoc.RootElement.TryGetProperty("Certificate", out var certProp))
-                {
-                    string certStr = certProp.GetString() ?? "";
-                    username = ExtractUsernameFromChain(certStr);
-                    clientPubKeyBase64 = ExtractClientPublicKey(certStr);
-                }
-                else
-                {
-                    username = ExtractUsernameFromChain(authInfoStr);
-                    clientPubKeyBase64 = ExtractClientPublicKey(authInfoStr);
-                }
+                Log.Debug("Loaded persistent data for {Username} (XUID: {Xuid})", chainData.Username, chainData.Xuid);
             }
-            catch (Exception ex)
-            {
-                Log.Error("Failed to parse AuthInfo/ChainData: {Msg}", ex.Message);
-            }
-            
-            session.Username = username;
-            Log.Information("Player {Username} is logging in from {EndPoint}", session.Username, session.EndPoint);
+
+            Log.Information("Creating player: {Username} ({EndPoint})", session.Username, session.EndPoint);
 
             try
             {
@@ -139,8 +76,6 @@ namespace QuantumMC.Network.Handler
                 session.SendPacket(handshakePacket);
                 session.InitializeEncryption(aesKey, ivBase);
                 
-                Log.Information("Sent ServerToClientHandshakePacket and enabled encryption for {Username}", session.Username);
-                
                 session.State = SessionState.LoginPhase; 
             }
             catch (Exception ex)
@@ -149,97 +84,154 @@ namespace QuantumMC.Network.Handler
             }
         }
 
-        private string ExtractUsernameFromChain(string chainDataJwt)
+        private LoginChainData ParseChainData(string authInfoStr)
         {
+            var data = new LoginChainData();
+            if (string.IsNullOrEmpty(authInfoStr)) return data;
+
             try
             {
-                chainDataJwt = SanitizeJsonString(chainDataJwt);
-                using var doc = JsonDocument.Parse(chainDataJwt);
-                if (doc.RootElement.TryGetProperty("chain", out var chainArray) && chainArray.GetArrayLength() > 0)
+                if (authInfoStr.StartsWith("ey") && authInfoStr.Contains('.'))
+                {
+                    var parts = authInfoStr.Split('.');
+                    if (parts.Length >= 2)
+                    {
+                        try
+                        {
+                            var payloadDoc = JsonDocument.Parse(EncryptionUtils.Base64UrlDecode(parts[1]));
+                            var payload = payloadDoc.RootElement;
+                            
+                            if (payload.TryGetProperty("cpk", out var cpkProp))
+                                data.IdentityPublicKey = cpkProp.GetString() ?? "";
+                            if (payload.TryGetProperty("xname", out var nameProp))
+                                data.Username = nameProp.GetString() ?? "Unknown";
+                            if (payload.TryGetProperty("xid", out var xidProp))
+                                data.Xuid = xidProp.GetString() ?? "";
+                            
+                            return data;
+                        }
+                        catch {}
+                    }
+                }
+
+                authInfoStr = SanitizeJsonString(authInfoStr);
+                using var doc = JsonDocument.Parse(authInfoStr);
+                var root = doc.RootElement;
+                data.RawChainData = JsonDocument.Parse(authInfoStr);
+
+                if (root.TryGetProperty("Token", out var wrapperToken))
+                {
+                    return ParseChainData(wrapperToken.GetString() ?? "");
+                }
+                if (root.TryGetProperty("Certificate", out var wrapperCert))
+                {
+                    return ParseChainData(wrapperCert.GetString() ?? "");
+                }
+
+                if (root.TryGetProperty("chain", out var chainArray))
                 {
                     foreach (var jwtElem in chainArray.EnumerateArray())
                     {
                         var jwt = jwtElem.GetString();
                         if (string.IsNullOrEmpty(jwt)) continue;
-
                         var parts = jwt.Split('.');
                         if (parts.Length < 2) continue;
 
-                        string payloadBase64 = parts[1];
-                        int padding = 4 - (payloadBase64.Length % 4);
-                        if (padding < 4) payloadBase64 += new string('=', padding);
-                        payloadBase64 = payloadBase64.Replace('-', '+').Replace('_', '/');
-
-                        byte[] payloadBytes = Convert.FromBase64String(payloadBase64);
-                        var payloadDoc = JsonDocument.Parse(payloadBytes);
-
-                        if (payloadDoc.RootElement.TryGetProperty("extraData", out var extraData) &&
-                            extraData.TryGetProperty("displayName", out var displayName))
-                        {
-                            return displayName.GetString() ?? "Unknown";
-                        }
-                    }
-                }
-                return "Unknown";
-            }
-            catch { return "Unknown"; }
-        }
-
-        private string ExtractClientPublicKey(string chainDataJwt)
-        {
-            try
-            {
-                chainDataJwt = SanitizeJsonString(chainDataJwt);
-                using var doc = JsonDocument.Parse(chainDataJwt);
-                if (doc.RootElement.TryGetProperty("chain", out var chainArray) && chainArray.GetArrayLength() > 0)
-                {
-                    for (int i = chainArray.GetArrayLength() - 1; i >= 0; i--)
-                    {
-                        var jwt = chainArray[i].GetString();
-                        if (string.IsNullOrEmpty(jwt)) continue;
-
-                        var parts = jwt.Split('.');
-                        if (parts.Length < 2) continue;
-
-                        string headerBase64 = parts[0];
-                        int padding = 4 - (headerBase64.Length % 4);
-                        if (padding < 4) headerBase64 += new string('=', padding);
-                        headerBase64 = headerBase64.Replace('-', '+').Replace('_', '/');
-                        
                         try
                         {
-                            byte[] headerBytes = Convert.FromBase64String(headerBase64);
-                            var headerDoc = JsonDocument.Parse(headerBytes);
-                            if (headerDoc.RootElement.TryGetProperty("x5u", out var x5u))
+                            var payloadDoc = JsonDocument.Parse(EncryptionUtils.Base64UrlDecode(parts[1]));
+                            var payload = payloadDoc.RootElement;
+
+                            if (payload.TryGetProperty("identityPublicKey", out var pubKeyProp))
+                                data.IdentityPublicKey = pubKeyProp.GetString() ?? data.IdentityPublicKey;
+
+                            if (payload.TryGetProperty("extraData", out var extraData))
                             {
-                                string? val = x5u.GetString();
-                                if (!string.IsNullOrEmpty(val)) return val;
+                                if (extraData.TryGetProperty("displayName", out var nameProp))
+                                    data.Username = nameProp.GetString() ?? data.Username;
+                                if (extraData.TryGetProperty("XUID", out var xuidProp))
+                                    data.Xuid = xuidProp.GetString() ?? data.Xuid;
+                                if (extraData.TryGetProperty("identity", out var uuidProp) && Guid.TryParse(uuidProp.GetString(), out var uuid))
+                                    data.ClientUuid = uuid;
                             }
                         }
-                        catch {}
-
-                        string payloadBase64 = parts[1];
-                        padding = 4 - (payloadBase64.Length % 4);
-                        if (padding < 4) payloadBase64 += new string('=', padding);
-                        payloadBase64 = payloadBase64.Replace('-', '+').Replace('_', '/');
+                        catch (Exception ex) { Log.Verbose("Failed to parse chain JWT part: {Msg}", ex.Message); }
 
                         try
                         {
-                            byte[] payloadBytes = Convert.FromBase64String(payloadBase64);
-                            var payloadDoc = JsonDocument.Parse(payloadBytes);
-                            if (payloadDoc.RootElement.TryGetProperty("identityPublicKey", out var pubKey))
-                                return pubKey.GetString() ?? "";
-                            
-                            if (payloadDoc.RootElement.TryGetProperty("extraData", out var extraData) &&
-                                extraData.TryGetProperty("identityPublicKey", out pubKey))
-                                return pubKey.GetString() ?? "";
+                            var headerDoc = JsonDocument.Parse(EncryptionUtils.Base64UrlDecode(parts[0]));
+                            if (headerDoc.RootElement.TryGetProperty("x5u", out var x5u))
+                                data.IdentityPublicKey = x5u.GetString() ?? data.IdentityPublicKey;
                         }
                         catch {}
                     }
                 }
+                else
+                {
+                    Log.Warning("No 'chain' property found in login data!");
+                }
+
+                string clientDataJwt = string.Empty;
+                if (root.TryGetProperty("clientData", out var clientDataProp)) clientDataJwt = clientDataProp.GetString() ?? "";
+                else if (root.TryGetProperty("ClientData", out clientDataProp)) clientDataJwt = clientDataProp.GetString() ?? "";
+
+                if (!string.IsNullOrEmpty(clientDataJwt))
+                {
+                    var parts = clientDataJwt.Split('.');
+                    if (parts.Length >= 2)
+                    {
+                        try
+                        {
+                            var payloadDoc = JsonDocument.Parse(EncryptionUtils.Base64UrlDecode(parts[1]));
+                            data.RawClientData = payloadDoc;
+                            var payload = payloadDoc.RootElement;
+
+                            if (payload.TryGetProperty("ClientUUID", out var uuidProp) && Guid.TryParse(uuidProp.GetString(), out var uuid))
+                                data.ClientUuid = uuid;
+                            
+                            if (payload.TryGetProperty("DeviceModel", out var modelProp))
+                                data.DeviceModel = modelProp.GetString() ?? "";
+                            if (payload.TryGetProperty("DeviceOS", out var osProp))
+                                data.DeviceOs = osProp.GetInt32();
+                            if (payload.TryGetProperty("DeviceId", out var idProp))
+                                data.DeviceId = idProp.GetString() ?? "";
+                            if (payload.TryGetProperty("GameVersion", out var verProp))
+                                data.GameVersion = verProp.GetString() ?? "";
+                            if (payload.TryGetProperty("LanguageCode", out var langProp))
+                                data.LanguageCode = langProp.GetString() ?? "";
+                            if (payload.TryGetProperty("GuiScale", out var guiProp))
+                                data.GuiScale = guiProp.GetInt32();
+                            if (payload.TryGetProperty("UIProfile", out var uiProp))
+                                data.UiProfile = uiProp.GetInt32();
+                            
+                            if (payload.TryGetProperty("ClientId", out var idLongProp))
+                                data.ClientId = idLongProp.GetInt32() == 0 ? 0 : idLongProp.GetInt64();
+                            if (payload.TryGetProperty("ServerAddress", out var addrProp))
+                                data.ServerAddress = addrProp.GetString() ?? "";
+                            if (payload.TryGetProperty("CurrentInputMode", out var inputProp))
+                                data.CurrentInputMode = inputProp.GetInt32();
+                            if (payload.TryGetProperty("DefaultInputMode", out var defInputProp))
+                                data.DefaultInputMode = defInputProp.GetInt32();
+                            if (payload.TryGetProperty("MemoryTier", out var memProp))
+                                data.MemoryTier = memProp.GetInt32();
+                            if (payload.TryGetProperty("PartyId", out var partyProp))
+                                data.PartyId = partyProp.GetString() ?? "";
+                            if (payload.TryGetProperty("CapeData", out var capeProp))
+                                data.CapeData = capeProp.GetString() ?? "";
+                        }
+                        catch (Exception ex) { Log.Warning("Failed to parse client data JWT: {Msg}", ex.Message); }
+                    }
+                }
+                else
+                {
+                    Log.Warning("No 'clientData' property found in login data!");
+                }
+                
+                data.IsXboxAuthed = !string.IsNullOrEmpty(data.Xuid);
             }
-            catch (Exception ex) { Log.Warning("Failed to extract client public key: {Message}", ex.Message); }
-            return string.Empty;
+            catch (Exception ex) { Log.Warning("Failed to parse login chain data: {Message}. Data: {Data}", ex.Message, authInfoStr); }
+            
+            return data;
         }
 
         private static string SanitizeJsonString(string json)

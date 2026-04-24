@@ -19,17 +19,14 @@ namespace QuantumMC.Network.Handler
             var packet = new ResourcePackClientResponsePacket();
             packet.Decode(stream);
 
-            Log.Information("Received ResourcePackClientResponse from {Username}: Status={Status}", session.Username, packet.ResponseStatus);
-
             switch (packet.ResponseStatus)
             {
                 case ResourcePackClientResponseStatus.Refused:
-                    Log.Warning("Player {Username} refused resource packs, disconnecting", session.Username);
                     session.Disconnect();
                     break;
 
                 case ResourcePackClientResponseStatus.SendPacks:
-                    Log.Information("Player {Username} requested pack download (no packs to send)", session.Username);
+                    Log.Debug("Player {Username} requested pack download (no packs to send)", session.Username);
                     break;
 
                 case ResourcePackClientResponseStatus.HaveAllPacks:
@@ -40,7 +37,6 @@ namespace QuantumMC.Network.Handler
                         UseVanillaEditorPacks = false
                     };
                     session.SendPacket(stackPacket);
-                    Log.Information("Sent ResourcePackStack to {Username}", session.Username);
                     break;
 
                 case ResourcePackClientResponseStatus.Completed:
@@ -52,7 +48,6 @@ namespace QuantumMC.Network.Handler
         private void HandleCompleted(PlayerSession session)
         {
             session.State = SessionState.PlayPhase;
-            Log.Information("Resource pack phase completed for {Username}", session.Username);
 
             var voxelShapes = new VoxelShapesPacket
             {
@@ -64,20 +59,20 @@ namespace QuantumMC.Network.Handler
 
             var startGame = new StartGamePacket
             {
-                EntityUniqueId = 609,
-                EntityRuntimeId = 402,
-                PlayerGamemode = 1,
-                X = 0, Y = 0, Z = 0,
-                Yaw = 0, Pitch = 0,
-                Seed = 777777777777,
+                EntityUniqueId = session.Player.EntityUniqueId,
+                EntityRuntimeId = session.Player.EntityRuntimeId,
+                PlayerGamemode = session.Player.Gamemode,
+                X = session.Player.X, Y = session.Player.Y, Z = session.Player.Z,
+                Yaw = session.Player.Yaw, Pitch = session.Player.Pitch,
+                Seed = -1,
                 SpawnBiomeType = 0,
                 UserDefinedBiomeName = "plains",
                 Dimension = 0,
                 Generator = 1,
-                WorldGamemode = 1,
+                WorldGamemode = session.Player.Gamemode,
                 IsHardcore = false,
                 Difficulty = 0,
-                SpawnX = session.World!.SpawnX, SpawnY = session.World.SpawnY, SpawnZ = session.World.SpawnZ,
+                SpawnX = session.Player.World!.SpawnX, SpawnY = session.Player.World.SpawnY, SpawnZ = session.Player.World.SpawnZ,
                 HasAchievementsDisabled = true,
                 EditorWorldType = 0,
                 CreatedInEditor = false,
@@ -120,7 +115,7 @@ namespace QuantumMC.Network.Handler
                 ChatRestrictionLevel = 0,
                 DisablePlayerInteractions = false,
                 LevelId = "",
-                WorldName = session.World.Name,
+                WorldName = session.Player.World!.Name,
                 PremiumWorldTemplateId = "",
                 IsTrial = false,
                 RewindHistorySize = 0,
@@ -145,7 +140,6 @@ namespace QuantumMC.Network.Handler
             };
 
             session.SendPacket(startGame);
-            Log.Information("Sent StartGame to {Username}", session.Username);
         }
     }
 }

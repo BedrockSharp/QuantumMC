@@ -14,9 +14,10 @@ namespace QuantumMC.Network
         public RaknetSession RakSession { get; }
         public IPEndPoint EndPoint => RakSession.PeerEndPoint;
         public SessionState State { get; set; } = SessionState.HandshakePhase;
-        public bool CompressionReady { get; set; } = false;
+        public Player.Player Player { get; }
         public string Username { get; set; } = string.Empty;
-
+        public bool CompressionReady { get; set; } = false;
+        
         public bool EncryptionEnabled { get; set; } = false;
         public byte[]? AesKey { get; set; }
         public byte[]? IvBase { get; set; }
@@ -26,15 +27,13 @@ namespace QuantumMC.Network
         public BedrockStreamCipher? Encryptor { get; private set; }
         public BedrockStreamCipher? Decryptor { get; private set; }
 
-        public World.World? World { get; set; }
-        public int ChunkRadius { get; set; } = 8;
-
         private readonly SessionManager _sessionManager;
 
         public PlayerSession(RaknetSession rakSession, SessionManager sessionManager)
         {
             RakSession = rakSession;
             _sessionManager = sessionManager;
+            Player = new Player.Player(this);
 
             rakSession.SessionReceiveRaw += OnRawPacketReceived;
             rakSession.SessionDisconnected += OnDisconnected;
@@ -83,19 +82,19 @@ namespace QuantumMC.Network
             Encryptor = EncryptionUtils.CreateCipher(true, key, iv);
             Decryptor = EncryptionUtils.CreateCipher(false, key, iv);
             EncryptionEnabled = true;
-            
-            Log.Information("Encryption initialized for {Username} ({EndPoint})", Username, EndPoint);
+
         }
 
         public void Disconnect()
         {
-            Log.Information("Disconnecting player {Username} ({EndPoint})", Username, EndPoint);
+            Server.Instance.PlayerProvider.SavePlayer(Player);
             _sessionManager.RemoveSession(EndPoint);
         }
 
         private void OnDisconnected(RaknetSession session)
         {
             Log.Information("Player {Username} ({EndPoint}) disconnected", Username, EndPoint);
+            Server.Instance.PlayerProvider.SavePlayer(Player);
             _sessionManager.RemoveSession(EndPoint);
         }
     }
