@@ -6,7 +6,6 @@ namespace QuantumMC.World
 {
     public class WorldManager
     {
-        public static WorldManager Instance { get; private set; } = default!;
         public World DefaultWorld => GetWorld(Server.Instance.Config.WorldName)!;
 
         private readonly ConcurrentDictionary<string, World> _worlds = new(StringComparer.OrdinalIgnoreCase);
@@ -14,7 +13,6 @@ namespace QuantumMC.World
 
         public WorldManager()
         {
-            Instance = this;
             _worldsFolder = Path.Combine(QuantumMC.DataFolder, "worlds");
 
             if (!Directory.Exists(_worldsFolder))

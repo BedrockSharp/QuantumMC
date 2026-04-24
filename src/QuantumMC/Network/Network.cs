@@ -57,7 +57,7 @@ namespace QuantumMC.Network
 
             var playerSession = new PlayerSession(rakSession, _sessionManager)
             {
-                World = WorldManager.Instance.DefaultWorld
+                World = Server.Instance.WorldManager.DefaultWorld
             };
             _sessionManager.AddSession(rakSession.PeerEndPoint, playerSession);
 
