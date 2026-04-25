@@ -12,6 +12,7 @@ on:
           - patch
           - minor
           - major
+          - alpha
 
 jobs:
   release:
@@ -40,14 +41,23 @@ jobs:
         
         CURRENT_VERSION=$(grep -oP 'Current = "\K[^"]+' $VERSION_FILE)
         
-        BASE_VERSION=$(echo $CURRENT_VERSION | cut -d'-' -f1)
+        if [[ $CURRENT_VERSION == *"-"* ]]; then
+          BASE_VERSION=$(echo $CURRENT_VERSION | cut -d'-' -f1)
+          PRERELEASE=$(echo $CURRENT_VERSION | cut -d'-' -f2)
+        else
+          BASE_VERSION=$CURRENT_VERSION
+          PRERELEASE=""
+        fi
         
         IFS='.' read -ra ADDR <<< "$BASE_VERSION"
         MAJOR=${ADDR[0]}
         MINOR=${ADDR[1]}
         PATCH=${ADDR[2]}
         
-        case ${{ github.event.inputs.bump_type }} in
+        BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+        NEW_PRERELEASE=""
+        
+        case $BUMP_TYPE in
           major)
             MAJOR=$((MAJOR + 1))
             MINOR=0
@@ -60,10 +70,27 @@ jobs:
           patch)
             PATCH=$((PATCH + 1))
             ;;
+          alpha)
+            if [[ $PRERELEASE =~ ^alpha([0-9]+)$ ]]; then
+              ALPHA_NUM=${BASH_REMATCH[1]}
+              NEW_ALPHA_NUM=$((ALPHA_NUM + 1))
+              NEW_PRERELEASE="alpha$NEW_ALPHA_NUM"
+            else
+              NEW_PRERELEASE="alpha1"
+            fi
+            ;;
         esac
         
-        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        if [ -n "$NEW_PRERELEASE" ]; then
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH-$NEW_PRERELEASE"
+          IS_PRERELEASE="true"
+        else
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          IS_PRERELEASE="false"
+        fi
+        
         echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+        echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_ENV
         
         sed -i "s/Current = \"$CURRENT_VERSION\"/Current = \"$NEW_VERSION\"/" $VERSION_FILE
         
@@ -86,7 +113,7 @@ jobs:
         tag_name: v${{ env.NEW_VERSION }}
         name:  QuantumMC v${{ env.NEW_VERSION }}
         draft: false
-        prerelease: false
+        prerelease: ${{ env.IS_PRERELEASE == 'true' }}
         body: |
           ## 🚀 What's New in v${{ env.NEW_VERSION }}
           
@@ -97,6 +124,9 @@ jobs:
           2. Ensure you have the [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed.
           3. Run using `dotnet QuantumMC.dll` or the provided binary.
           
-        files: src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
+        files: |
+          src/QuantumMC/bin/Release/net10.0/QuantumMC.dll
+          src/QuantumMC/bin/Release/net10.0/QuantumMC.runtimeconfig.json
+          src/QuantumMC/bin/Release/net10.0/QuantumMC.pdb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
