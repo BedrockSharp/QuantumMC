@@ -1,0 +1,6 @@
+[submodule "docs"]
+	path = docs
+	url = https://github.com/BedrockSharp/website.git
+[submodule "ExamplePlugin"]
+	path = ExamplePlugin
+	url = https://github.com/BedrockSharp/ExamplePlugin.git

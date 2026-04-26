@@ -84,7 +84,7 @@ namespace QuantumMC.Network.Handler
                 Yaw = packet.Yaw,
                 HeadYaw = packet.HeadYaw,
                 Mode = MoveMode.Normal,
-                OnGround = true,
+                OnGround = packet.Tick > 0,
                 RidingEntityId = 0,
                 Tick = packet.Tick
             };

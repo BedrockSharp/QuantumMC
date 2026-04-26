@@ -4,6 +4,7 @@ using QuantumMC.Network;
 using QuantumMC.World;
 using BedrockProtocol.Packets;
 using BedrockProtocol.Packets.Types;
+using BedrockProtocol.Packets.Enums;
 
 namespace QuantumMC.Player
 {
@@ -104,6 +105,17 @@ namespace QuantumMC.Player
                 Session.SendPacket(levelChunkPacket);
                 SentChunks.Add((chunk.ChunkX, chunk.ChunkZ));
             }
+        }
+
+        public void SendMessage(string message)
+        {
+            var textPacket = new TextPacket
+            {
+                Message = message,
+                Type = TextType.Raw
+            };
+
+            Session.SendPacket(textPacket);
         }
     }
 }
