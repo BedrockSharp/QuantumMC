@@ -237,9 +237,22 @@ namespace QuantumMC.Network.Handler
         private static string SanitizeJsonString(string json)
         {
             int start = json.IndexOf('{');
-            int end = json.LastIndexOf('}');
-            if (start != -1 && end != -1 && end >= start)
-                return json.Substring(start, end - start + 1);
+            if (start == -1) return json;
+
+            int braceCount = 0;
+            for (int i = start; i < json.Length; i++)
+            {
+                if (json[i] == '{') braceCount++;
+                else if (json[i] == '}')
+                {
+                    braceCount--;
+                    if (braceCount == 0)
+                    {
+                        return json.Substring(start, i - start + 1);
+                    }
+                }
+            }
+            
             return json;
         }
     }

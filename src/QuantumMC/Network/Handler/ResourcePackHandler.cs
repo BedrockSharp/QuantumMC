@@ -140,6 +140,36 @@ namespace QuantumMC.Network.Handler
             };
 
             session.SendPacket(startGame);
+
+            /*var adventureSettings = new AdventureSettingsPacket
+            {
+                Flags = 0,
+                CommandPermission = 1,
+                ActionPermission = 1,
+                PermissionLevel = 1,
+                CustomFlags = 0,
+                EntityUniqueId = session.Player.EntityUniqueId
+            };
+            session.SendPacket(adventureSettings);
+
+            var abilities = new UpdateAbilitiesPacket
+            {
+                EntityUniqueId = session.Player.EntityUniqueId,
+                PermissionLevel = 1,
+                CommandPermission = 1,
+                Abilities = new List<AbilityLayer>
+                {
+                    new AbilityLayer
+                    {
+                        Type = AbilityLayerType.Base,
+                        AbilitiesSet = 0x3FF,
+                        AbilitiesValue = (uint)(session.Player.Gamemode == 1 ? 0x3FF : 0x0),
+                        FlySpeed = 0.05f,
+                        WalkSpeed = 0.1f
+                    }
+                }
+            };
+            session.SendPacket(abilities); TODO: Implement those later*/
         }
     }
 }

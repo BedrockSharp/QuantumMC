@@ -6,6 +6,8 @@ using Serilog;
 using Org.BouncyCastle.Crypto;
 using QuantumMC.Network.Handler;
 using QuantumMC.World;
+using QuantumMC.Event.Impl;
+using QuantumMC.Utils;
 
 namespace QuantumMC.Network
 {
@@ -92,6 +94,14 @@ namespace QuantumMC.Network
 
         private void OnDisconnected(RaknetSession session)
         {
+            var playerQuitEvent = new PlayerQuitEvent(Player, "%multiplayer.player.left");
+            Server.Instance.PluginManager.EventManager.CallEventAsync(playerQuitEvent).GetAwaiter().GetResult();
+
+            if (playerQuitEvent.QuitMessage != null)
+            {
+                Server.Instance.SendTranslation(TextFormat.Yellow + playerQuitEvent.QuitMessage, [Username]);
+            }
+
             Log.Information("Player {Username} ({EndPoint}) disconnected", Username, EndPoint);
             Server.Instance.PlayerProvider.SavePlayer(Player);
             _sessionManager.RemoveSession(EndPoint);

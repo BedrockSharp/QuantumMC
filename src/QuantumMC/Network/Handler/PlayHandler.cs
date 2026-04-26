@@ -2,6 +2,7 @@ using BedrockProtocol.Packets;
 using BedrockProtocol.Packets.Types;
 using BedrockProtocol.Utils;
 using QuantumMC.Utils;
+using QuantumMC.Event.Impl;
 using Serilog;
 
 namespace QuantumMC.Network.Handler
@@ -53,6 +54,14 @@ namespace QuantumMC.Network.Handler
                 Status = BedrockProtocol.Packets.Enums.PlayStatus.PlayerSpawn
             };
             session.SendPacket(spawnStatus);
+
+            var playerJoinEvent = new PlayerJoinEvent(session.Player, "%multiplayer.player.joined");
+            Server.Instance.PluginManager.EventManager.CallEventAsync(playerJoinEvent).GetAwaiter().GetResult();
+
+            if (playerJoinEvent.JoinMessage != null)
+            {
+                Server.Instance.SendTranslation(TextFormat.Yellow + playerJoinEvent.JoinMessage, [session.Username]);
+            }
         }
 
         private void HandleSetLocalPlayerAsInitialized(PlayerSession session, byte[] payload)
@@ -61,7 +70,6 @@ namespace QuantumMC.Network.Handler
             var packet = new SetLocalPlayerAsInitializedPacket();
             packet.Decode(stream);
 
-            Server.Instance.SendTranslation(TextFormat.Yellow + "%multiplayer.player.joined", [session.Username]);
             session.State = SessionState.InGamePhase;
         }
     }

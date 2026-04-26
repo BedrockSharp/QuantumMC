@@ -16,10 +16,11 @@ namespace QuantumMC
         private readonly int _port;
         private readonly int _maxPlayers;
         private bool _running;
-        public ServerConfig Config;
-        public World.WorldManager WorldManager;
-        public Player.IPlayerProvider PlayerProvider;
-        public Network.Network Network;
+        public ServerConfig Config { get; }
+        public World.WorldManager WorldManager { get; }
+        public Player.IPlayerProvider PlayerProvider { get; }
+        public Network.Network Network { get; }
+        public Plugin.PluginManager PluginManager { get; }
 
         public Server(ServerConfig config)
         {
@@ -32,6 +33,7 @@ namespace QuantumMC
             WorldManager = new World.WorldManager();
             PlayerProvider = new Player.LevelDBPlayerProvider(Path.Combine(QuantumMC.DataFolder, "players"));
             Network = new Network.Network(config);
+            PluginManager = new Plugin.PluginManager();
         }
 
         public void Start()
@@ -51,6 +53,8 @@ namespace QuantumMC
             Registry.BlockRegistry.Init();
             WorldManager.LoadWorlds();
             
+            PluginManager.Init();
+
             Network.Start();
             Log.Information("Server started! Type /help for the list of available commands.");
 
@@ -71,6 +75,9 @@ namespace QuantumMC
             if (!_running) return;
             _running = false;
             Log.Information("Stopping server...");
+            
+            PluginManager.DisablePluginsAsync().GetAwaiter().GetResult();
+
             Network.Stop();
             if (PlayerProvider is IDisposable disposable) disposable.Dispose();
             Log.Information("Server has stopped.");
