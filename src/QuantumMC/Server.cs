@@ -70,7 +70,6 @@ namespace QuantumMC
                 Stop();
             };
 
-            // Console input thread
             new Thread(() =>
             {
                 while (_running)

@@ -23,7 +23,7 @@
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageReference Include="RaknetCS" Version="1.0.1" />
-    <PackageReference Include="BedrockProtocol" Version="1.0.3" />
+    <PackageReference Include="BedrockProtocol" Version="1.0.4" />
     <PackageReference Include="BedrockSharp.Nbt" Version="1.0.1" />
     <PackageReference Include="Serilog" Version="4.2.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />

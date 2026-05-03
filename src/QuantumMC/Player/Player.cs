@@ -146,5 +146,11 @@ namespace QuantumMC.Player
 
         public void AddPermission(string permission) => _permissions.Add(permission.ToLower());
         public void RemovePermission(string permission) => _permissions.Remove(permission.ToLower());
+
+        public void SendCommandData()
+        {
+            var packet = Server.Instance.CommandMap.GetAvailableCommandsPacket(this);
+            Session.SendPacket(packet);
+        }
     }
 }

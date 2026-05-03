@@ -1,3 +1,5 @@
+using BedrockProtocol.Packets;
+
 namespace QuantumMC.Command
 {
     public interface ICommandMap
@@ -7,5 +9,6 @@ namespace QuantumMC.Command
         bool Dispatch(ICommandSender sender, string commandLine);
         void ClearCommands();
         Command? GetCommand(string name);
+        AvailableCommandsPacket GetAvailableCommandsPacket(ICommandSender sender);
     }
 }

@@ -1,3 +1,8 @@
+using BedrockProtocol.Packets;
+using BedrockProtocol.Packets.Enums;
+using BedrockProtocol.Packets.Types;
+using ProtocolCommand = BedrockProtocol.Packets.Types.Command;
+
 namespace QuantumMC.Command
 {
     public class SimpleCommandMap : ICommandMap
@@ -70,7 +75,7 @@ namespace QuantumMC.Command
                 }
             }
 
-            sender.SendMessage($"§cUnknown command: /{sentCommandLabel}. Type 'help' for the list of available commands.");
+            sender.SendMessage($"§cUnknown command: /{sentCommandLabel}. Type /help for the list of available commands.");
             return false;
         }
 
@@ -79,5 +84,70 @@ namespace QuantumMC.Command
         public Command? GetCommand(string name) => KnownCommands.GetValueOrDefault(name.ToLower());
         
         public IReadOnlyDictionary<string, Command> GetCommands() => KnownCommands;
+
+        public AvailableCommandsPacket GetAvailableCommandsPacket(ICommandSender sender)
+        {
+            var packet = new AvailableCommandsPacket();
+            var seen = new HashSet<string>();
+
+            foreach (var kvp in KnownCommands)
+            {
+                var cmd = kvp.Value;
+                if (seen.Contains(cmd.Name.ToLower()))
+                    continue;
+
+                if (!cmd.TestPermission(sender))
+                    continue;
+
+                seen.Add(cmd.Name.ToLower());
+
+                uint aliasesOffset = 0xFFFFFFFF;
+
+                if (cmd.Aliases.Count > 0)
+                {
+                    var aliasEnum = new CommandEnum
+                    {
+                        Type = cmd.Name.ToLower() + "Aliases",
+                        ValueIndices = new List<uint>()
+                    };
+
+                    uint baseIndex = (uint)packet.EnumValues.Count;
+                    packet.EnumValues.Add(cmd.Name.ToLower());
+                    aliasEnum.ValueIndices.Add(baseIndex);
+
+                    foreach (var alias in cmd.Aliases)
+                    {
+                        packet.EnumValues.Add(alias.ToLower());
+                        aliasEnum.ValueIndices.Add((uint)(packet.EnumValues.Count - 1));
+                    }
+
+                    aliasesOffset = (uint)packet.Enums.Count;
+                    packet.Enums.Add(aliasEnum);
+                }
+
+                var protocolCmd = new ProtocolCommand
+                {
+                    Name = cmd.Name.ToLower(),
+                    Description = cmd.Description ?? string.Empty,
+                    Flags = 0,
+                    PermissionLevel = string.IsNullOrEmpty(cmd.Permission) 
+                        ? CommandPermissionLevel.Any 
+                        : CommandPermissionLevel.GameDirectors,
+                    AliasesOffset = aliasesOffset,
+                    Overloads = new List<CommandOverload>
+                    {
+                        new CommandOverload
+                        {
+                            Chaining = false,
+                            Parameters = new List<CommandParameter>()
+                        }
+                    }
+                };
+
+                packet.Commands.Add(protocolCmd);
+            }
+
+            return packet;
+        }
     }
 }
