@@ -1,12 +1,10 @@
-namespace QuantumMC.Commands
+namespace QuantumMC.Command
 {
     public interface ICommandSender
     {
-        string GetLanguage();
         void SendMessage(string message);
         Server GetServer();
         string GetName();
-        int GetScreenLineHeight();
-        void SetScreenLineHeight(int height);
+        bool HasPermission(string permission);
     }
 }

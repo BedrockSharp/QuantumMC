@@ -48,5 +48,53 @@ namespace QuantumMC.Utils
         {
             return text.Replace('&', Escape);
         }
+
+        private static readonly Dictionary<char, string> AnsiCodes = new()
+        {
+            ['0'] = "\x1b[30m",
+            ['1'] = "\x1b[34m",
+            ['2'] = "\x1b[32m",
+            ['3'] = "\x1b[36m",
+            ['4'] = "\x1b[31m",
+            ['5'] = "\x1b[35m",
+            ['6'] = "\x1b[33m",
+            ['7'] = "\x1b[37m",
+            ['8'] = "\x1b[90m",
+            ['9'] = "\x1b[94m",
+            ['a'] = "\x1b[92m",
+            ['b'] = "\x1b[96m",
+            ['c'] = "\x1b[91m",
+            ['d'] = "\x1b[95m",
+            ['e'] = "\x1b[93m",
+            ['f'] = "\x1b[97m",
+            ['g'] = "\x1b[33m",
+            ['k'] = "\x1b[5m",
+            ['l'] = "\x1b[1m",
+            ['o'] = "\x1b[3m",
+            ['r'] = "\x1b[0m"
+        };
+
+        public static string ToAnsi(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            var result = new System.Text.StringBuilder();
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] == Escape && i + 1 < text.Length)
+                {
+                    char code = char.ToLower(text[i + 1]);
+                    if (AnsiCodes.TryGetValue(code, out var ansi))
+                    {
+                        result.Append(ansi);
+                        i++;
+                        continue;
+                    }
+                }
+                result.Append(text[i]);
+            }
+            result.Append("\x1b[0m");
+            return result.ToString();
+        }
     }
 }

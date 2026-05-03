@@ -11,9 +11,9 @@ namespace QuantumMC.Plugin
             _pluginName = pluginName;
         }
 
-        public void Information(string message) => Log.Information("[{PluginName}] {Message}", _pluginName, message);
-        public void Warning(string message) => Log.Warning("[{PluginName}] {Message}", _pluginName, message);
-        public void Error(string message, Exception? ex = null) => Log.Error(ex, "[{PluginName}] {Message}", _pluginName, message);
-        public void Debug(string message) => Log.Debug("[{PluginName}] {Message}", _pluginName, message);
+        public void Information(string message) => Log.Information("[{PluginName}] {Message}", _pluginName, Utils.TextFormat.ToAnsi(message));
+        public void Warning(string message) => Log.Warning("[{PluginName}] {Message}", _pluginName, Utils.TextFormat.ToAnsi(message));
+        public void Error(string message, Exception? ex = null) => Log.Error(ex, "[{PluginName}] {Message}", _pluginName, Utils.TextFormat.ToAnsi(message));
+        public void Debug(string message) => Log.Debug("[{PluginName}] {Message}", _pluginName, Utils.TextFormat.ToAnsi(message));
     }
 }

@@ -1,6 +1,7 @@
 using BedrockProtocol.Packets;
 using BedrockProtocol.Packets.Enums;
 using BedrockProtocol.Utils;
+using QuantumMC.Utils;
 using Serilog;
 
 namespace QuantumMC.Network.Handler
@@ -98,8 +99,7 @@ namespace QuantumMC.Network.Handler
             var packet = new TextPacket();
             packet.Decode(stream);
 
-            Log.Information("{Username}: {Text}", session.Username, packet.Message);
-
+            Log.Information("{Username}: {Text}", session.Username, TextFormat.ToAnsi(packet.Message));
             Server.Instance.Network.BroadcastPacket(packet);
         }
 

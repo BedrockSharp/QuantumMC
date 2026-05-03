@@ -5,16 +5,31 @@ using QuantumMC.World;
 using BedrockProtocol.Packets;
 using BedrockProtocol.Packets.Types;
 using BedrockProtocol.Packets.Enums;
+using QuantumMC.Command;
 
 namespace QuantumMC.Player
 {
-    public class Player
+    public class Player : ICommandSender
     {
         public string Username { get; set; } = string.Empty;
         public string Xuid { get; set; } = string.Empty;
         public string Uuid { get; set; } = string.Empty;
         public Network.LoginChainData? ChainData { get; set; }
         
+        private bool _isOp = false;
+        public bool IsOp 
+        { 
+            get => _isOp;
+            set
+            {
+                _isOp = value;
+                if (value) Server.Instance.OperatorManager.AddOp(Username);
+                else Server.Instance.OperatorManager.RemoveOp(Username);
+            }
+        }
+
+        private HashSet<string> _permissions = new();
+
         public long EntityUniqueId { get; set; }
         public ulong EntityRuntimeId { get; set; }
         
@@ -53,6 +68,8 @@ namespace QuantumMC.Player
         {
             Session = session;
             Username = session.Username;
+            _isOp = Server.Instance.OperatorManager.IsOp(Username);
+
             World = Server.Instance.WorldManager.DefaultWorld;
             
             EntityUniqueId = Server.Instance.Network.SessionManager.GetNextEntityId();
@@ -117,5 +134,17 @@ namespace QuantumMC.Player
 
             Session.SendPacket(textPacket);
         }
+
+        public Server GetServer() => Server.Instance;
+        public string GetName() => Username;
+
+        public bool HasPermission(string permission)
+        {
+            if (IsOp || string.IsNullOrEmpty(permission)) return true;
+            return _permissions.Contains(permission.ToLower());
+        }
+
+        public void AddPermission(string permission) => _permissions.Add(permission.ToLower());
+        public void RemovePermission(string permission) => _permissions.Remove(permission.ToLower());
     }
 }

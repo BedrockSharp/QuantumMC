@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 using QuantumMC.Event;
-using QuantumMC.Commands;
+using QuantumMC.Command;
 
 namespace QuantumMC.Plugin
 {
@@ -12,9 +12,9 @@ namespace QuantumMC.Plugin
         public virtual Task OnEnable() => Task.CompletedTask;
         public virtual Task OnDisable() => Task.CompletedTask;
 
-        protected void RegisterCommand(string commandName, CommandExecutor executor)
+        protected void RegisterCommand(Command.Command command)
         {
-            CommandRegistry.Register(commandName, executor);
+            Server.Instance.CommandMap.Register(Info.Name, command);
         }
 
         protected void RegisterListener(Listener listener)

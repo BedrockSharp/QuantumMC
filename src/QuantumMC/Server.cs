@@ -6,7 +6,6 @@ using QuantumMC.Network;
 using QuantumMC.Config;
 using RaknetCS.Network;
 using Serilog;
-using QuantumMC.Commands;
 
 namespace QuantumMC
 {
@@ -22,6 +21,9 @@ namespace QuantumMC
         public Player.IPlayerProvider PlayerProvider { get; }
         public Network.Network Network { get; }
         public Plugin.PluginManager PluginManager { get; }
+        public Command.ICommandMap CommandMap { get; }
+        public Command.ConsoleCommandSender ConsoleSender { get; }
+        public Player.OperatorManager OperatorManager { get; }
 
         public Server(ServerConfig config)
         {
@@ -35,6 +37,9 @@ namespace QuantumMC
             PlayerProvider = new Player.LevelDBPlayerProvider(Path.Combine(QuantumMC.DataFolder, "players"));
             Network = new Network.Network(config);
             PluginManager = new Plugin.PluginManager();
+            CommandMap = new Command.SimpleCommandMap(this);
+            ConsoleSender = new Command.ConsoleCommandSender();
+            OperatorManager = new Player.OperatorManager(QuantumMC.DataFolder);
         }
 
         public void Start()
@@ -53,18 +58,40 @@ namespace QuantumMC
 
             Registry.BlockRegistry.Init();
             WorldManager.LoadWorlds();
-            CommandRegistry.AutoRegister();
             
             PluginManager.Init();
 
             Network.Start();
-            Log.Information("Server started! Type /help for the list of available commands.");
+            Log.Information("Server started! Type 'help' for the list of available commands.");
 
             Console.CancelKeyPress += (_, e) =>
             {
                 e.Cancel = true;
                 Stop();
             };
+
+            // Console input thread
+            new Thread(() =>
+            {
+                while (_running)
+                {
+                    string? line = Console.ReadLine();
+                    if (string.IsNullOrEmpty(line)) continue;
+
+                    try
+                    {
+                        CommandMap.Dispatch(ConsoleSender, line);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error while dispatching console command");
+                    }
+                }
+            })
+            {
+                Name = "Console Input Thread",
+                IsBackground = true
+            }.Start();
 
             while (_running)
             {
