@@ -97,9 +97,17 @@ namespace QuantumMC.Network
             var playerQuitEvent = new PlayerQuitEvent(Player, "%multiplayer.player.left");
             Server.Instance.PluginManager.EventManager.CallEventAsync(playerQuitEvent).GetAwaiter().GetResult();
 
+            var playerKickEvent = new PlayerKickEvent(Player, "%multiplayer.player.left");
+            Server.Instance.PluginManager.EventManager.CallEventAsync(playerKickEvent).GetAwaiter().GetResult();
+
             if (playerQuitEvent.QuitMessage != null)
             {
                 Server.Instance.SendTranslation(TextFormat.Yellow + playerQuitEvent.QuitMessage, [Username]);
+            }
+            
+            if (playerKickEvent.KickMessage != null)
+            {
+                Server.Instance.SendTranslation(TextFormat.Red + playerKickEvent.KickMessage, [Username]);
             }
 
             Log.Information("Player {Username} ({EndPoint}) disconnected", Username, EndPoint);

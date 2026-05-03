@@ -6,6 +6,7 @@ using QuantumMC.Network;
 using QuantumMC.Config;
 using RaknetCS.Network;
 using Serilog;
+using QuantumMC.Commands;
 
 namespace QuantumMC
 {
@@ -52,6 +53,7 @@ namespace QuantumMC
 
             Registry.BlockRegistry.Init();
             WorldManager.LoadWorlds();
+            CommandRegistry.AutoRegister();
             
             PluginManager.Init();
 
