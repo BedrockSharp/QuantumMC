@@ -71,6 +71,7 @@ namespace QuantumMC.Network.Handler
             packet.Decode(stream);
 
             session.State = SessionState.InGamePhase;
+            session.Player.SendCommandData();
         }
     }
 }

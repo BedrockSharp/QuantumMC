@@ -28,6 +28,7 @@ namespace QuantumMC.Network.Handler
             _handlers.Add((uint)PacketIds.MovePlayer, inGameHandler);
             _handlers.Add((uint)PacketIds.PlayerAuthInput, inGameHandler);
             _handlers.Add((uint)PacketIds.Animate, inGameHandler);
+            _handlers.Add((uint)PacketIds.CommandRequest, inGameHandler);
         }
 
         public static void Dispatch(PlayerSession session, uint packetId, byte[] payload)

@@ -1,6 +1,8 @@
 using BedrockProtocol.Packets;
 using BedrockProtocol.Packets.Enums;
+using BedrockProtocol.Types;
 using BedrockProtocol.Utils;
+using QuantumMC.Utils;
 using Serilog;
 
 namespace QuantumMC.Network.Handler
@@ -23,6 +25,9 @@ namespace QuantumMC.Network.Handler
                 case PacketIds.Animate:
                     HandleAnimate(session, payload);
                     break;
+                case PacketIds.CommandRequest:
+                    HandleCommandRequest(session, payload);
+                    break;
             }
         }
 
@@ -32,9 +37,9 @@ namespace QuantumMC.Network.Handler
             var packet = new MovePlayerPacket();
             packet.Decode(stream);
 
-            session.Player.X = packet.X;
-            session.Player.Y = packet.Y;
-            session.Player.Z = packet.Z;
+            session.Player.X = packet.Position.X;
+            session.Player.Y = packet.Position.Y;
+            session.Player.Z = packet.Position.Z;
             session.Player.Pitch = packet.Pitch;
             session.Player.Yaw = packet.Yaw;
             session.Player.HeadYaw = packet.HeadYaw;
@@ -44,9 +49,7 @@ namespace QuantumMC.Network.Handler
             var broadcastPacket = new MovePlayerPacket
             {
                 RuntimeEntityId = session.Player.EntityRuntimeId,
-                X = packet.X,
-                Y = packet.Y,
-                Z = packet.Z,
+                Position = packet.Position,
                 Pitch = packet.Pitch,
                 Yaw = packet.Yaw,
                 HeadYaw = packet.HeadYaw,
@@ -65,9 +68,9 @@ namespace QuantumMC.Network.Handler
             var packet = new PlayerAuthInputPacket();
             packet.Decode(stream);
 
-            session.Player.X = packet.PositionX;
-            session.Player.Y = packet.PositionY;
-            session.Player.Z = packet.PositionZ;
+            session.Player.X = packet.Position.X;
+            session.Player.Y = packet.Position.Y;
+            session.Player.Z = packet.Position.Z;
             session.Player.Pitch = packet.Pitch;
             session.Player.Yaw = packet.Yaw;
             session.Player.HeadYaw = packet.HeadYaw;
@@ -77,9 +80,7 @@ namespace QuantumMC.Network.Handler
             var broadcastPacket = new MovePlayerPacket
             {
                 RuntimeEntityId = session.Player.EntityRuntimeId,
-                X = packet.PositionX,
-                Y = packet.PositionY,
-                Z = packet.PositionZ,
+                Position = packet.Position,
                 Pitch = packet.Pitch,
                 Yaw = packet.Yaw,
                 HeadYaw = packet.HeadYaw,
@@ -98,8 +99,7 @@ namespace QuantumMC.Network.Handler
             var packet = new TextPacket();
             packet.Decode(stream);
 
-            Log.Information("{Username}: {Text}", session.Username, packet.Message);
-
+            Log.Information("{Username}: {Text}", session.Username, TextFormat.ToAnsi(packet.Message));
             Server.Instance.Network.BroadcastPacket(packet);
         }
 
@@ -110,6 +110,15 @@ namespace QuantumMC.Network.Handler
             packet.Decode(stream);
 
             Server.Instance.Network.BroadcastPacket(packet, true, session);
+        }
+
+        private void HandleCommandRequest(PlayerSession session, byte[] payload)
+        {
+            var stream = new BinaryStream(payload);
+            var packet = new CommandRequestPacket();
+            packet.Decode(stream);
+
+            Server.Instance.CommandMap.Dispatch(session.Player, packet.CommandLine);
         }
     }
 }
